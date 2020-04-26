@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat | Sistemas Distribuidos</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+    <link rel="stylesheet" href="styles/chat.css">
+</head>
+
+<body>
+    <div class="container-login" id="container-login">
+        <div class="login-user">
+            <h1>Participe agora do chat! </h1>
+            <form class="form-login-user" id="login">
+                <input type="text" name="username" id="username" placeholder="Digite seu usuário" required>
+                <button type="submit">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container-chat" id="container-chat">
+        <div class="users-connected">
+            <h3>Usuários conectados</h3>
+            <ul id="list-users">
+            </ul>
+        </div>
+        <div class="box-messages">
+            <form id="chat">
+                <input type="text" name="username" id="user_logado" disabled>
+                <div class="messages"></div>
+                <input type="text" name="message" id="message" placeholder="Digite sua mensagem">
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+
+        function getDataHoraFormatada() {
+            // Obtém a data/hora atual
+            var data = new Date();
+
+            // Guarda cada pedaço em uma variável
+            var dia = data.getDate()
+            var mes = data.getMonth();
+            var ano4 = data.getFullYear();
+            var hora = data.getHours();
+            var min = data.getMinutes();
+
+            var data = `${dia}/0${mes}/${ano4}`;
+            var hora = `${hora}h${min}`;
+
+            return `${hora} ${data}`;
+        }
+
+
+        $(document).ready(function () {
+            $("#container-chat").hide();
+        });
+
+        var socket = io('http://localhost:3000');
+
+        // O jquery recupera o evento de Submit
+        $("#login").submit(function (e) {
+            e.preventDefault(); // O JS impede da página recarregar
+
+            var usuario = $("#username").val(); // O JQUERY recuperar o valor do campo username e atribui a variável usuário
+            socket.emit('ADD_USER', usuario); // O cliente socket é responsável por 'chamar' o evento ADD_USER, passando como parâmetro a variável usuario  
+
+            $("#container-login").hide(); // O DOM é manipulado para esconder a div com ID container-login
+            $("#container-chat").show(); //O DOM é manipulado para mostrar  a div com ID container-chat
+            user_logado = $("#user_logado").val(usuario); // Atribuo a variavel user_logado, o nome do usuário logado no chat.
+        });
+
+
+        function renderUsers(user) { // Método responsável por renderizar os usuários logados na lista
+            $('#list-users').append('<li>' + user + '</li>');
+        }
+
+        function renderUserDisconnect(user) { // Método responsável por renderizar o nome do usuário desconectado
+            $('.messages').append('<div class="message"><strong><i>' + user + '</i></strong>   Saiu do chat ..</div>');
+        }
+
+        function renderUsersConnectChat(user) {
+            $('.messages').append('<div class="message">Usuário conectado: <strong>' + user + '</strong></div>');
+        }
+
+        function renderNewUserChat(user) { // Responsável por informar a todos no chat, que mais um usuário adentrou ao recinto
+            $('.messages').append('<div class="message"><strong><i>' + user + '</i></strong>   entrou no chat ..</div>');
+        }
+
+        function renderMessages(data) { // Renderiza as mensagens enviadas pelos usuários
+            $('.messages').append('<div class="message">/~<strong>' + data.usuario + ': </strong>' + data.message + ' ' + data.dataHora + '</div>');
+        }
+
+        socket.on('LIST_USERS_ONLINE', function (users) { // Implementação do evento LIST_USERS_ONLINE, a cada usuário no array, é incrementado a função, gerando um novo item na lista
+            for (const user of users) {
+                renderUsers(user);
+            }
+        });
+
+        socket.on('SEND_ALL_USERS', function (data) { // Implementação do evento SEND_ALL_USERS, a cada novo usuário, é renderizado o nome no chat de conversa
+            renderMessages(data);
+        });
+
+        socket.on('USER_DISCONNECT', function (user) { // Implementação do evento USER_DISCONNECT, a cada usuário desconectado, é renderizado o nome do usuário que saiu no chat de conversa
+            renderUserDisconnect(user);
+        });
+
+        socket.on('LIST_USERS_ONLINE_CHAT', function (users) { // Implementação do evento LIST_USERS_ONLINE_CHAT, renderiza no chat os usuários conectados no chat
+            for (const user of users) {
+                renderUsersConnectChat(user);
+            }
+        });
+
+        socket.on('NEW_USER_CHAT', function (user) { // Implementação do evento NEW_USER_CHAT, a cada novo usuário que entrar no chat, é renderizado o nome dele
+            renderNewUserChat(user);
+        });
+
+        $("#chat").submit(function (e) { // Captura o evento de submissão do formulário
+            e.preventDefault();
+
+            var mensagem = $("#message").val(); // Atribui a variável mensagem,  a mensagem escrita pelo usuário
+            var user_logado_chat = $("#user_logado").val();
+            var dataMessage = { // Monta um objeto com informações que serão renderizada como o nome de usuário, mensagem escrita por ele, data e hora atual
+                usuario: user_logado_chat,
+                message: mensagem,
+                dataHora: getDataHoraFormatada()
+            };
+
+            socket.emit('SEND_MESSAGE', dataMessage); // Dispara o evento SEND_MESSAGE, passando o objeto como parametro
+            $("#message").val(''); // Limpa a caixa de texto 
+            renderMessages(dataMessage); // Chama o método para renderizar passando o objeto
+        });
+
+    </script>
+</body>
+
+</html>
