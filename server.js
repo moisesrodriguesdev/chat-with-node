@@ -33,6 +33,7 @@ io.on("connection", (socket) => {
   socket.on("SEND_MESSAGE", (data) => {
     // Implementação do evento de 'Enviar Mensagem'
     if (data.message.match(/Bye/)) {
+      users.splice(users.indexOf(data.usuario), 1);
       // Verifica no objeto, o atributo message se contém a palavra Bye.
       socket.disconnect(); // Se for verdadeiro, o usuário é desconectado do chat
 
